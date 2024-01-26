@@ -20,15 +20,40 @@ public class Maze : MonoBehaviour
     // List of wall objects
     private List<Wall> _walls = new List<Wall>();
 
+    private Camera _mainCamera;
+
+    private void Awake()
+    {
+        _mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
+    }
+
     private void Start()
     {
-        InitializeMaze();
+        MoveCamera();
         CreateCells();
+        CreateBorders();
         CreateWalls();
         GenerateMaze();
     }
+
+    private void MoveCamera()
+    {
+        var x = (float)width;
+        var y = (float)height;
+        _mainCamera.gameObject.transform.position = new Vector3(x / 2, y / 2, -10);
+        
+        if (_mainCamera.aspect >= x / y)
+        {
+            _mainCamera.orthographicSize = y / 2 + 5;
+        }
+        else
+        {
+            var differenceInSize = x / y / _mainCamera.aspect;
+            _mainCamera.orthographicSize = y / 2 * differenceInSize + 5;
+        }
+    }
     
-    private void InitializeMaze()
+    private void CreateCells()
     {
         _cells = new Cell[width, height];
 
@@ -37,9 +62,28 @@ public class Maze : MonoBehaviour
             for (var y = 0; y < height; y++)
             {
                 _cells[x, y] = new Cell(x, y, Instantiate(cellPrefab, new Vector3(x, y, 0.5f), Quaternion.identity));
-
             }
         }
+    }
+
+    private void CreateBorders()
+    {
+        var leftBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.identity);
+        var rightBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.identity);
+        var topBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.Euler(0, 0, 90));
+        var bottomBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.Euler(0, 0, 90));
+        
+        leftBorder.transform.position = new Vector3(-0.5f, (height - 1) * 0.5f, 0);
+        leftBorder.transform.localScale = new Vector3(0.2f, height - 1 + 1.2f, 1);
+        
+        rightBorder.transform.position = new Vector3(-0.5f + width, (height - 1) * 0.5f, 0);
+        rightBorder.transform.localScale = new Vector3(0.2f, height - 1 + 1.2f, 1);
+        
+        bottomBorder.transform.position = new Vector3((width - 1) * 0.5f, -0.5f, 0);
+        bottomBorder.transform.localScale = new Vector3(0.2f, width - 1 + 1.2f, 1);
+        
+        topBorder.transform.position = new Vector3((width - 1) * 0.5f, -0.5f + height, 0);
+        topBorder.transform.localScale = new Vector3(0.2f, width - 1 + 1.2f, 1);
     }
 
     private void CreateWalls()

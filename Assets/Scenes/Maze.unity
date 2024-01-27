@@ -338,8 +338,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7f93eeea318f403e8e075bb45b35a38, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  width: 50
-  height: 30
+  width: 10
+  height: 10
   wallPrefab: {fileID: 7548954843746682307, guid: d603c61851f444b7cbb1a6577e8c72bb, type: 3}
   cellPrefab: {fileID: 3890219125363751255, guid: 1feb543f394ea4cd2988c31d92d7baa6, type: 3}
 --- !u!4 &1713458200

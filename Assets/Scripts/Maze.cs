@@ -1,6 +1,5 @@
-using System;
+using System.Collections;
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 
 public class Maze : MonoBehaviour
@@ -18,10 +17,23 @@ public class Maze : MonoBehaviour
     // Two-dimensional array of cell objects
     private Cell[,] _cells;
     // List of wall objects
-    private List<Wall> _walls = new List<Wall>();
+    private readonly List<Wall> _walls = new();
+    private List<GameObject> _wallObjectsToRemove = new();
 
     private Camera _mainCamera;
-
+    
+    private static IEnumerator DisableWallsSequentially(List<GameObject> wallObjects, float delayTime)
+    {
+        foreach (var wallObject in wallObjects)
+        {
+            if (wallObject != null) 
+            {
+                wallObject.SetActive(false);
+                yield return new WaitForSeconds(delayTime);
+            }
+        }
+    }
+    
     private void Awake()
     {
         _mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
@@ -112,8 +124,8 @@ public class Maze : MonoBehaviour
         var forest = new DisjointSet(width * height);
         foreach (var wall in _walls)
         {
-            Cell cell1 = wall.Cell1;
-            Cell cell2 = wall.Cell2;
+            var cell1 = wall.Cell1;
+            var cell2 = wall.Cell2;
 
             var set1 = forest.Find(cell1.X + cell1.Y * width);
             var set2 = forest.Find(cell2.X + cell2.Y * width);
@@ -121,8 +133,10 @@ public class Maze : MonoBehaviour
             if (set1 != set2)
             {
                 forest.Union(set1, set2);
-                Destroy(wall.WallObject);
+                _wallObjectsToRemove.Add(wall.GameObject);
             }
         }
+
+        StartCoroutine(DisableWallsSequentially(_wallObjectsToRemove, 0.1f));
     }
 }

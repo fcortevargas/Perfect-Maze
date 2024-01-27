@@ -1,0 +1,145 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Maze
+{
+    public class Maze : MonoBehaviour
+    {
+        // Width of the maze
+        private readonly int _width = GameManager.MazeWidth;
+        // Height of the maze
+        private readonly int _height = GameManager.MazeHeight;
+    
+        // Prefab for the visual representation of the walls of the maze
+        public GameObject wallPrefab;
+        // Prefab for the visual representation of the cells of the maze
+        public GameObject cellPrefab;
+    
+        // Two-dimensional array of cell objects
+        private Cell[,] _cells;
+        // List of wall objects
+        private readonly List<Wall> _walls = new();
+        private List<GameObject> _wallObjectsToRemove = new();
+
+        private Camera _mainCamera;
+    
+        private static IEnumerator DisableWallsSequentially(List<GameObject> wallObjects, float delayTime)
+        {
+            foreach (var wallObject in wallObjects)
+            {
+                if (wallObject != null) 
+                {
+                    wallObject.SetActive(false);
+                    yield return new WaitForSeconds(delayTime);
+                }
+            }
+        }
+    
+        private void Awake()
+        {
+            _mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
+        }
+
+        private void Start()
+        {
+            MoveCamera();
+            CreateCells();
+            CreateBorders();
+            CreateWalls();
+            GenerateMaze();
+        }
+
+        private void MoveCamera()
+        {
+            var x = (float)_width;
+            var y = (float)_height;
+            _mainCamera.gameObject.transform.position = new Vector3(x / 2, y / 2, -10);
+        
+            if (_mainCamera.aspect >= x / y)
+            {
+                _mainCamera.orthographicSize = y / 2 + 5;
+            }
+            else
+            {
+                var differenceInSize = x / y / _mainCamera.aspect;
+                _mainCamera.orthographicSize = y / 2 * differenceInSize + 5;
+            }
+        }
+    
+        private void CreateCells()
+        {
+            _cells = new Cell[_width, _height];
+
+            for (var x = 0; x < _width; x++)
+            {
+                for (var y = 0; y < _height; y++)
+                {
+                    _cells[x, y] = new Cell(x, y, Instantiate(cellPrefab, new Vector3(x, y, 0.5f), Quaternion.identity));
+                }
+            }
+        }
+
+        private void CreateBorders()
+        {
+            var leftBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.identity);
+            var rightBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.identity);
+            var topBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.Euler(0, 0, 90));
+            var bottomBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.Euler(0, 0, 90));
+        
+            leftBorder.transform.position = new Vector3(-0.5f, (_height - 1) * 0.5f, 0);
+            leftBorder.transform.localScale = new Vector3(0.2f, _height - 1 + 1.2f, 1);
+        
+            rightBorder.transform.position = new Vector3(-0.5f + _width, (_height - 1) * 0.5f, 0);
+            rightBorder.transform.localScale = new Vector3(0.2f, _height - 1 + 1.2f, 1);
+        
+            bottomBorder.transform.position = new Vector3((_width - 1) * 0.5f, -0.5f, 0);
+            bottomBorder.transform.localScale = new Vector3(0.2f, _width - 1 + 1.2f, 1);
+        
+            topBorder.transform.position = new Vector3((_width - 1) * 0.5f, -0.5f + _height, 0);
+            topBorder.transform.localScale = new Vector3(0.2f, _width - 1 + 1.2f, 1);
+        }
+
+        private void CreateWalls()
+        {
+            for (var x = 0; x < _width; x++)
+            {
+                for (var y = 0; y < _height; y++)
+                {
+                    if (x < _width - 1)
+                    {
+                        _walls.Add(new Wall(_cells[x, y], _cells[x + 1, y], Instantiate(wallPrefab, new Vector3(x + 0.5f, y, 0), Quaternion.identity)));
+                    }
+
+                    if (y < _height - 1)
+                    {
+                        _walls.Add(new Wall(_cells[x, y], _cells[x, y + 1], Instantiate(wallPrefab, new Vector3(x, y + 0.5f, 0), Quaternion.Euler(0, 0, 90))));
+                    }
+                }
+            }
+        }
+    
+        private void GenerateMaze()
+        {
+            _walls.Sort((w1, w2) => w1.Weight.CompareTo(w2.Weight));
+
+            var forest = new DisjointSet(_width * _height);
+            foreach (var wall in _walls)
+            {
+                var cell1 = wall.Cell1;
+                var cell2 = wall.Cell2;
+
+                var set1 = forest.Find(cell1.X + cell1.Y * _width);
+                var set2 = forest.Find(cell2.X + cell2.Y * _width);
+
+                if (set1 != set2)
+                {
+                    forest.Union(set1, set2);
+                    _wallObjectsToRemove.Add(wall.GameObject);
+                }
+            }
+
+            StartCoroutine(DisableWallsSequentially(_wallObjectsToRemove, 0.001f));
+        }
+    }
+}

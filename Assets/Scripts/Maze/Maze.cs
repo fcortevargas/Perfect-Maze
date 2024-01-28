@@ -15,12 +15,22 @@ namespace Maze
         public GameObject wallPrefab;
         // Prefab for the visual representation of the cells of the maze
         public GameObject cellPrefab;
+        
+        // Parent game object for the walls
+        public GameObject wallsParent;
+        // Parent game object for the removed walls
+        public GameObject removedWallsParent;
+        // Parent game object for the cells
+        public GameObject cellsParent;
+        // Parent game object for the borders
+        public GameObject bordersParent;
     
         // Two-dimensional array of cell objects
         private Cell[,] _cells;
         // List of wall objects
         private readonly List<Wall> _walls = new();
-        private List<GameObject> _wallObjectsToRemove = new();
+        // List of wall game objects that will be removed
+        private readonly List<GameObject> _wallObjectsToRemove = new();
 
         private Camera _mainCamera;
     
@@ -75,9 +85,13 @@ namespace Maze
             {
                 for (var y = 0; y < _height; y++)
                 {
-                    _cells[x, y] = new Cell(x, y, Instantiate(cellPrefab, new Vector3(x, y, 0.5f), Quaternion.identity));
+                    var newCell = new Cell(x, y, Instantiate(cellPrefab, new Vector3(x, y, 0.5f), Quaternion.identity));
+                    newCell.GameObject.transform.SetParent(cellsParent.transform);
+                    _cells[x, y] = newCell;
                 }
             }
+
+            CombineMeshes(cellsParent);
         }
 
         private void CreateBorders()
@@ -87,17 +101,23 @@ namespace Maze
             var topBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.Euler(0, 0, 90));
             var bottomBorder = Instantiate(wallPrefab, Vector3.zero, Quaternion.Euler(0, 0, 90));
         
+            leftBorder.transform.SetParent(bordersParent.transform);
             leftBorder.transform.position = new Vector3(-0.5f, (_height - 1) * 0.5f, 0);
             leftBorder.transform.localScale = new Vector3(0.2f, _height - 1 + 1.2f, 1);
         
+            rightBorder.transform.SetParent(bordersParent.transform);
             rightBorder.transform.position = new Vector3(-0.5f + _width, (_height - 1) * 0.5f, 0);
             rightBorder.transform.localScale = new Vector3(0.2f, _height - 1 + 1.2f, 1);
         
+            bottomBorder.transform.SetParent(bordersParent.transform);
             bottomBorder.transform.position = new Vector3((_width - 1) * 0.5f, -0.5f, 0);
             bottomBorder.transform.localScale = new Vector3(0.2f, _width - 1 + 1.2f, 1);
         
+            topBorder.transform.SetParent(bordersParent.transform);
             topBorder.transform.position = new Vector3((_width - 1) * 0.5f, -0.5f + _height, 0);
             topBorder.transform.localScale = new Vector3(0.2f, _width - 1 + 1.2f, 1);
+            
+            CombineMeshes(bordersParent);
         }
 
         private void CreateWalls()
@@ -108,15 +128,49 @@ namespace Maze
                 {
                     if (x < _width - 1)
                     {
-                        _walls.Add(new Wall(_cells[x, y], _cells[x + 1, y], Instantiate(wallPrefab, new Vector3(x + 0.5f, y, 0), Quaternion.identity)));
+                        var newWall = new Wall(_cells[x, y], _cells[x + 1, y],
+                            Instantiate(wallPrefab, new Vector3(x + 0.5f, y, 0), Quaternion.identity));
+                        newWall.GameObject.transform.SetParent(wallsParent.transform);
+                        _walls.Add(newWall);
                     }
 
                     if (y < _height - 1)
                     {
-                        _walls.Add(new Wall(_cells[x, y], _cells[x, y + 1], Instantiate(wallPrefab, new Vector3(x, y + 0.5f, 0), Quaternion.Euler(0, 0, 90))));
+                        var newWall = new Wall(_cells[x, y], _cells[x, y + 1],
+                            Instantiate(wallPrefab, new Vector3(x, y + 0.5f, 0), Quaternion.Euler(0, 0, 90)));
+                        newWall.GameObject.transform.SetParent(wallsParent.transform);
+                        _walls.Add(newWall);
                     }
                 }
             }
+        }
+
+        private static void CombineMeshes(GameObject parentObject)
+        {
+            var meshFilters = parentObject.GetComponentsInChildren<MeshFilter>();
+            var combineInstances = new List<CombineInstance>();
+
+            foreach (var meshFilter in meshFilters)
+            {
+                if (meshFilter != null && meshFilter.sharedMesh != null)
+                {
+                    var combineInstance = new CombineInstance
+                    {
+                        mesh = meshFilter.sharedMesh,
+                        transform = meshFilter.transform.localToWorldMatrix
+                    };
+                    combineInstances.Add(combineInstance);
+                    meshFilter.gameObject.SetActive(false);
+                }
+            }
+
+            var combinedMesh = new Mesh
+            {
+                indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 // Use 32-bit indices
+            };
+            combinedMesh.CombineMeshes(combineInstances.ToArray(), true, true);
+            parentObject.GetComponent<MeshFilter>().mesh = combinedMesh;
+            parentObject.gameObject.SetActive(true);
         }
     
         private void GenerateMaze()
@@ -136,10 +190,23 @@ namespace Maze
                 {
                     forest.Union(set1, set2);
                     _wallObjectsToRemove.Add(wall.GameObject);
+                    wall.GameObject.transform.SetParent(removedWallsParent.transform);
                 }
             }
 
             StartCoroutine(DisableWallsSequentially(_wallObjectsToRemove, 0.001f));
+            
+            CombineMeshes(wallsParent);
+
+            StartDisablingWalls();
+        }
+            GameManager.IsMazeReset = true;
+
+        public void StartDisablingWalls()
+        {
+            StartCoroutine(DisableWallsSequentially(_wallObjectsToRemove, 0.001f));
+            
+            GameManager.IsMazeReset = false;
         }
     }
 }

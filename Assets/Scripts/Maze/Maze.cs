@@ -44,6 +44,8 @@ namespace Maze
                     yield return new WaitForSeconds(delayTime);
                 }
             }
+            
+            GameManager.IsMazeCompleted = true;
         }
     
         private void Awake()
@@ -64,7 +66,7 @@ namespace Maze
         {
             var x = (float)_width;
             var y = (float)_height;
-            _mainCamera.gameObject.transform.position = new Vector3(x / 2, y / 2, -10);
+            _mainCamera.gameObject.transform.position = new Vector3(x / 2 - 0.5f, y / 2 - 0.5f, -10);
         
             if (_mainCamera.aspect >= x / y)
             {
@@ -193,14 +195,23 @@ namespace Maze
                     wall.GameObject.transform.SetParent(removedWallsParent.transform);
                 }
             }
-
-            StartCoroutine(DisableWallsSequentially(_wallObjectsToRemove, 0.001f));
             
             CombineMeshes(wallsParent);
 
             StartDisablingWalls();
         }
+
+        public void ResetMaze()
+        {
+            foreach (Transform child in removedWallsParent.transform)
+            {
+                child.gameObject.SetActive(true);
+            }
+            
             GameManager.IsMazeReset = true;
+            GameManager.IsMazeCompleted = false;
+            
+        }
 
         public void StartDisablingWalls()
         {

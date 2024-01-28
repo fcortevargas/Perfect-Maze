@@ -5,16 +5,16 @@ namespace UI
 {
     public abstract class ButtonController : MonoBehaviour
     {
-        private Button _button;
-
+        protected Button Button;
+        
         private void Awake()
         {
-            _button = GetComponent<Button>();
+            Button = GetComponent<Button>();
         }
     
         private void Update()
         {
-            _button.interactable = IsInteractable(); 
+            Button.interactable = IsInteractable(); 
         }
 
         protected abstract bool IsInteractable();

@@ -6,13 +6,15 @@ namespace UI
     {
         private void Start()
         {
-            if (!GameManager.IsGameStarted)
-                Button.onClick.AddListener(GameManager.Instance.StartGame);
+            if (!GameManager.IsMazeSceneLoaded)
+                Button.onClick.AddListener(GameManager.Instance.LoadMaze);
+            else
+                Button.onClick.AddListener(Maze.Instance.StartDisablingWalls);
         }
 
         protected override bool IsInteractable()
         {
-            if (GameObject.Find("Maze") == null)
+            if (Maze.Instance == null)
                 return GameManager.MazeSpeed > 0;
             
             return GameManager.IsMazeReset;

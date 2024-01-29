@@ -12,7 +12,8 @@ public class GameManager : MonoBehaviour
 
     public static bool IsMazeCompleted { get; set; }
     public static bool IsMazeReset { get; set; }
-    public static bool IsGameStarted { get; private set; }
+    public static bool IsMazeSceneLoaded { get; private set; }
+    public static bool IsGameSceneLoaded { get; private set; }
 
     private void Awake()
     {
@@ -27,19 +28,27 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
-
-    public void StartGame()
-    {
-        SceneManager.LoadScene("Maze");
-        IsGameStarted = true;
-    }
-
+    
     public void LoadMainMenu()
     {
         SceneManager.LoadScene("Start");
         MazeSpeed = 0;
         MazeWidth = 10;
         MazeHeight = 10;
-        IsGameStarted = false;
+        IsMazeSceneLoaded = false;
+        IsGameSceneLoaded = false;
+    }
+
+    public void LoadMaze()
+    {
+        SceneManager.LoadScene("Maze");
+        IsMazeSceneLoaded = true;
+        IsGameSceneLoaded = false;
+    }
+
+    public void LoadGame()
+    {
+        SceneManager.LoadScene("Game");
+        IsGameSceneLoaded = true;
     }
 }

@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Maze
 {
@@ -34,20 +36,6 @@ namespace Maze
 
         private Camera _mainCamera;
     
-        private static IEnumerator DisableWallsSequentially(List<GameObject> wallObjects, float delayTime)
-        {
-            foreach (var wallObject in wallObjects)
-            {
-                if (wallObject != null) 
-                {
-                    wallObject.SetActive(false);
-                    yield return new WaitForSeconds(delayTime);
-                }
-            }
-            
-            GameManager.IsMazeCompleted = true;
-        }
-    
         private void Awake()
         {
             _mainCamera = GameObject.Find("Main Camera").GetComponent<Camera>();
@@ -55,30 +43,12 @@ namespace Maze
 
         private void Start()
         {
-            MoveCamera();
             CreateCells();
             CreateBorders();
             CreateWalls();
             GenerateMaze();
         }
-
-        private void MoveCamera()
-        {
-            var x = (float)_width;
-            var y = (float)_height;
-            _mainCamera.gameObject.transform.position = new Vector3(x / 2 - 0.5f, y / 2 - 0.5f, -10);
         
-            if (_mainCamera.aspect >= x / y)
-            {
-                _mainCamera.orthographicSize = y / 2 + 5;
-            }
-            else
-            {
-                var differenceInSize = x / y / _mainCamera.aspect;
-                _mainCamera.orthographicSize = y / 2 * differenceInSize + 5;
-            }
-        }
-    
         private void CreateCells()
         {
             _cells = new Cell[_width, _height];
@@ -93,7 +63,7 @@ namespace Maze
                 }
             }
 
-            CombineMeshes(cellsParent);
+            Combine3DMeshes(cellsParent);
         }
 
         private void CreateBorders()
@@ -105,21 +75,21 @@ namespace Maze
         
             leftBorder.transform.SetParent(bordersParent.transform);
             leftBorder.transform.position = new Vector3(-0.5f, (_height - 1) * 0.5f, 0);
-            leftBorder.transform.localScale = new Vector3(0.2f, _height - 1 + 1.2f, 1);
+            leftBorder.transform.localScale = new Vector3(0.3f, _height - 1 + 1.3f, 1);
         
             rightBorder.transform.SetParent(bordersParent.transform);
             rightBorder.transform.position = new Vector3(-0.5f + _width, (_height - 1) * 0.5f, 0);
-            rightBorder.transform.localScale = new Vector3(0.2f, _height - 1 + 1.2f, 1);
+            rightBorder.transform.localScale = new Vector3(0.3f, _height - 1 + 1.3f, 1);
         
             bottomBorder.transform.SetParent(bordersParent.transform);
             bottomBorder.transform.position = new Vector3((_width - 1) * 0.5f, -0.5f, 0);
-            bottomBorder.transform.localScale = new Vector3(0.2f, _width - 1 + 1.2f, 1);
+            bottomBorder.transform.localScale = new Vector3(0.3f, _width - 1 + 1.3f, 1);
         
             topBorder.transform.SetParent(bordersParent.transform);
             topBorder.transform.position = new Vector3((_width - 1) * 0.5f, -0.5f + _height, 0);
-            topBorder.transform.localScale = new Vector3(0.2f, _width - 1 + 1.2f, 1);
+            topBorder.transform.localScale = new Vector3(0.3f, _width - 1 + 1.3f, 1);
             
-            CombineMeshes(bordersParent);
+            Combine3DMeshes(bordersParent);
         }
 
         private void CreateWalls()
@@ -147,7 +117,7 @@ namespace Maze
             }
         }
 
-        private static void CombineMeshes(GameObject parentObject)
+        private static void Combine3DMeshes(GameObject parentObject)
         {
             var meshFilters = parentObject.GetComponentsInChildren<MeshFilter>();
             var combineInstances = new List<CombineInstance>();
@@ -168,7 +138,7 @@ namespace Maze
 
             var combinedMesh = new Mesh
             {
-                indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 // Use 32-bit indices
+                indexFormat = UnityEngine.Rendering.IndexFormat.UInt32
             };
             combinedMesh.CombineMeshes(combineInstances.ToArray(), true, true);
             parentObject.GetComponent<MeshFilter>().mesh = combinedMesh;
@@ -196,7 +166,7 @@ namespace Maze
                 }
             }
             
-            CombineMeshes(wallsParent);
+            Combine3DMeshes(wallsParent);
 
             StartDisablingWalls();
         }
@@ -211,6 +181,17 @@ namespace Maze
             GameManager.IsMazeReset = true;
             GameManager.IsMazeCompleted = false;
             
+        }
+        
+        private static IEnumerator DisableWallsSequentially(List<GameObject> wallObjects, float delayTime)
+        {
+            foreach (var wallObject in wallObjects.Where(wallObject => wallObject != null))
+            {
+                wallObject.SetActive(false);
+                yield return new WaitForSeconds(delayTime);
+            }
+
+            GameManager.IsMazeCompleted = true;
         }
 
         public void StartDisablingWalls()
